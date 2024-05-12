@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sumitmd"
+version = "0.0.1"
+authors = [
+    { name = "Alvaro Clemente", email = "clemente.varo@gmail.com" }
+]
+description = "Automated note extraction from video"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["ruff>=0.4.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+sumit = "sumit.cli:main"
