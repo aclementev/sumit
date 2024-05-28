@@ -170,8 +170,13 @@ def summarize(transcript: str, model: str):
         ],
         # TODO(alvaro): Temperature and other options
     )
-    message = response.choices[0].message
-    # TODO(alvaro): Handle a length based finish reason
+
+    choice = response.choices[0]
+    if not choice.finish_reason == "stop":
+        # The model did not generate all the tokens that it wanted
+        gen_tokens = response.usage.completion_tokens if response.usage is not None else "UNKNOWN"
+        print(f"WARNING: the summarizer could not finish the full generation (generated {gen_tokens} tokens)")
+    message = choice.message
     content = message.content
 
     return content
