@@ -6,9 +6,13 @@ from openai import OpenAI
 
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-DEFAULT_MODEL = "gpt-3.5-turbo"
-DEFAULT = "gpt-3.5-turbo"
-WHISPER_MODEL = "whisper-1"
+# FIXME(alvaro): The prompt does not generate blocks for all the ideas
+# TODO(alvaro): Add a way to download the video automatically if the user has
+# the downloaded installed
+
+# TODO(alvaro): Move to gpt4-o?
+SUMMARIZER_MODEL = "gpt-3.5-turbo"
+TRANSCRIBER_MODEL = "whisper-1"
 
 SUMMARIZATION_SYSTEM_PROMPT = """\
 You are a model that is an expert on extracting key ideas from talks and conversation transcripts and summarizing them.
@@ -96,27 +100,29 @@ Write your output here:
 """
 
 # TODO(alvaro): Error handling
+def main(path: str, dest_path: str = "notes.md"):
+    # TODO(alvaro): Add a way to download the contents of a video given a URL
+    transcription = transcribe(path, model=TRANSCRIBER_MODEL)
+    notes = summarize(transcription, model=SUMMARIZER_MODEL)
 
-def main(path: str):
-    transcription = transcribe(path)
-    notes = summarize(transcription)
-
-    with open("notes.md", "w") as f:
+    # TODO(alvaro): Add a way to put the generated content in the clipboard
+    with open(dest_path, "w") as f:
         f.write(notes)
 
 
-def transcribe(path: str):
-    with open(path, "rb") as f:
-        transcription = client.audio.transcriptions.create(model=WHISPER_MODEL, file=f)
+def transcribe(video_path: str, model: str):
+    """Take a video and generate a text transcription of the contents of the voice."""
+    with open(video_path, "rb") as f:
+        transcription = client.audio.transcriptions.create(model=model, file=f)
 
     return transcription.text
 
 
-def summarize(transcript: str):
-    """Call a LLM to summarize the content extracted from the transcript and put in in a
-    note format"""
+def summarize(transcript: str, model: str):
+    """Call a LLM to summarize the contents of a transcription into a file with the
+    contents in "note" format"""
     response = client.chat.completions.create(
-        model=DEFAULT_MODEL,
+        model=model,
         messages=[
             {"role": "system", "content": SUMMARIZATION_SYSTEM_PROMPT},
             {"role": "user", "content": PROMPT.format(transcript)},
