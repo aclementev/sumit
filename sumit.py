@@ -1,6 +1,8 @@
+#!/usr/bin/env python3
 """Automatic note extraction from a Youtube video"""
 
 import os
+import argparse
 import shutil
 import tempfile
 import subprocess
@@ -13,7 +15,7 @@ client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 # TODO(alvaro): Add a way to download the video automatically if the user has
 # the downloaded installed
 
-# TODO(alvaro): Move to gpt4-o?
+# TODO(alvaro): Move to gpt4-o? maybe using gpt-3.5-turbo-instuct?
 SUMMARIZER_MODEL = "gpt-3.5-turbo"
 TRANSCRIBER_MODEL = "whisper-1"
 
@@ -25,10 +27,10 @@ Some important instructions:
   - ONLY EXPLAIN CONCEPTS DISCUSSED DIRECTLY IN THE VIDEO
   - KEEP YOUR EXPLANATIONS SHORT, BUT MAKE SURE THEY INCLUDE AS MUCH RELEVANT INFORMATION AS POSSIBLE. Add a second paragraph when needed if the explanation requires it.
   - ASSUME A BASIC LEVEL OF UNDERSTANDING OF THE TOPICS IN QUESTION.
-  - THERE CAN BE MORE THAN 2 CONCEPTS WORTH MENTIONING
+  - THERE CAN BE MORE THAN 2 CONCEPTS WORTH MENTIONING, INCLUDE ALL OF THEM UP TO 8
 
 You will receive the input in a block signaled with `---` characters.
-Then, you will generate your answer. Use the following format:
+Then, you will generate your answer. Use the following format, WITHOUT INCLUDING `---`:
 
 ---
 **Summary:**
@@ -103,8 +105,29 @@ Write your output here:
 """
 
 
+def main():
+    parser = argparse.ArgumentParser(
+        description="""Generate a summary note in markdown format from the audio contents of a video.
+
+sumit uses AI to extract a transcript from the source audio, extract the key information from it, and 
+summarize it in a markdown note that you can then save and modify (e.g. to store it in your note taking system such as Obsidian)
+        """
+    )
+    parser.add_argument(
+        "source",
+        help="The path or URL to the source audio for the transcription. If it's a URL, this will use yt-dlp to download the audio from the video as an mp3",
+    )
+    parser.add_argument(
+        "-d", "--dest", help="The path to the destination", default="notes.md"
+    )
+
+    args = parser.parse_args()
+
+    run_pipeline(args.source, dest_path=args.dest)
+
+
 # TODO(alvaro): Error handling
-def main(path_or_url: str, dest_path: str = "notes.md"):
+def run_pipeline(path_or_url: str, dest_path: str = "notes.md"):
     directory = None
     try:
         if path_or_url.startswith("https://") or path_or_url.startswith("http://"):
@@ -183,5 +206,7 @@ def download_audio(url: str, dir: str) -> str:
 
 
 if __name__ == "__main__":
-    # main("samples/quantile-trick.mp3")
-    main("https://www.youtube.com/watch?v=yLz1NELcIM0")
+    # run_pipeline("samples/quantile-trick.mp3")
+    # run_pipeline("https://www.youtube.com/watch?v=yLz1NELcIM0")
+    main()
+
