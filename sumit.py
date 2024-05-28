@@ -1,6 +1,9 @@
 """Automatic note extraction from a Youtube video"""
 
 import os
+import shutil
+import tempfile
+import subprocess
 
 from openai import OpenAI
 
@@ -99,20 +102,35 @@ Write your output here:
 
 """
 
+
 # TODO(alvaro): Error handling
-def main(path: str, dest_path: str = "notes.md"):
-    # TODO(alvaro): Add a way to download the contents of a video given a URL
-    transcription = transcribe(path, model=TRANSCRIBER_MODEL)
-    notes = summarize(transcription, model=SUMMARIZER_MODEL)
+def main(path_or_url: str, dest_path: str = "notes.md"):
+    directory = None
+    try:
+        if path_or_url.startswith("https://") or path_or_url.startswith("http://"):
+            # This is a URL, so we can try to download the files using yt-dlp
+            directory = tempfile.TemporaryDirectory()
+            path = download_audio(path_or_url, directory.name)
+        else:
+            path = path_or_url
+        # TODO(alvaro): Add a way to download the contents of a video given a URL
+        print("Generating transcription")
+        transcription = transcribe(path, model=TRANSCRIBER_MODEL)
+        print("Generating summary")
+        notes = summarize(transcription, model=SUMMARIZER_MODEL)
 
-    # TODO(alvaro): Add a way to put the generated content in the clipboard
-    with open(dest_path, "w") as f:
-        f.write(notes)
+        # TODO(alvaro): Add a way to put the generated content in the clipboard
+        with open(dest_path, "w") as f:
+            f.write(notes)
+    finally:
+        if isinstance(directory, tempfile.TemporaryDirectory):
+            directory.cleanup()
 
 
-def transcribe(video_path: str, model: str):
-    """Take a video and generate a text transcription of the contents of the voice."""
-    with open(video_path, "rb") as f:
+def transcribe(audio_path: str, model: str):
+    """Take some audio (i.e. extracted from a video file or Youtube URL) and generate a
+    text transcription of the contents of the voice."""
+    with open(audio_path, "rb") as f:
         transcription = client.audio.transcriptions.create(model=model, file=f)
 
     return transcription.text
@@ -136,5 +154,34 @@ def summarize(transcript: str, model: str):
     return content
 
 
+def download_audio(url: str, dir: str) -> str:
+    """Use `yt-dlp` to download the audio from a youtube video URL"""
+    # FIXME(alvaro): yt-dlp has a Python API
+    if not shutil.which("yt-dlp"):
+        raise RuntimeError(
+            "yt-dlp not found. You need to install yt-dlp in order to use Youtube URL as input."
+        )
+
+    # Download the contents of the file using yt-dlp
+    audio_path = os.path.join(dir, "audio.mp3")
+    try:
+        subprocess.run(
+            [
+                "yt-dlp",
+                "-x",
+                "--audio-format",
+                "mp3",
+                "-o",
+                audio_path,
+                url,
+            ],
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        print(f"Failed to download audio from youtube video: {url}")
+    return audio_path
+
+
 if __name__ == "__main__":
-    main("samples/quantile-trick.mp3")
+    # main("samples/quantile-trick.mp3")
+    main("https://www.youtube.com/watch?v=yLz1NELcIM0")
