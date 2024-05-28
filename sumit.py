@@ -12,8 +12,6 @@ from openai import OpenAI
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 # FIXME(alvaro): The prompt does not generate blocks for all the ideas
-# TODO(alvaro): Add a way to download the video automatically if the user has
-# the downloaded installed
 
 # TODO(alvaro): Move to gpt4-o? maybe using gpt-3.5-turbo-instuct?
 SUMMARIZER_MODEL = "gpt-3.5-turbo"
@@ -133,6 +131,7 @@ def run_pipeline(path_or_url: str, dest_path: str = "notes.md"):
         if path_or_url.startswith("https://") or path_or_url.startswith("http://"):
             # This is a URL, so we can try to download the files using yt-dlp
             directory = tempfile.TemporaryDirectory()
+            print(f"Downloading audio: {path_or_url}")
             path = download_audio(path_or_url, directory.name)
         else:
             path = path_or_url
@@ -203,6 +202,8 @@ def download_audio(url: str, dir: str) -> str:
                 audio_path,
                 url,
             ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
             check=True,
         )
     except subprocess.CalledProcessError:
